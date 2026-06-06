@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <title>AI Therapist Demo</title>
+</head>
+
+<body>
+
+```
+<h1>AI Therapist Demo</h1>
+
+<button onclick="startRecording()">
+    Start Recording
+</button>
+
+<p id="status"></p>
+
+<h3>AI Response:</h3>
+
+<p id="response"></p>
+
+<audio id="player" controls></audio>
+
+<script>
+
+    let mediaRecorder;
+    let audioChunks = [];
+
+    async function startRecording() {
+
+        try {
+
+            // GET MIC ACCESS
+            const stream =
+                await navigator.mediaDevices.getUserMedia({
+                    audio: true
+                });
+
+            // START RECORDER
+            mediaRecorder =
+                new MediaRecorder(stream);
+
+            audioChunks = [];
+
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+
+                document.getElementById("status").innerText =
+                    "Processing AI response...";
+
+                // CREATE AUDIO BLOB
+                const audioBlob =
+                    new Blob(audioChunks, {
+                        type: "audio/webm"
+                    });
+
+                // SEND AUDIO TO BACKEND
+                const formData =
+                    new FormData();
+
+                formData.append(
+                    "audio",
+                    audioBlob,
+                    "recording.webm"
+                );
+
+                const response =
+                    await fetch(
+                        "http://127.0.0.1:5000/voice-chat",
+                        {
+                            method: "POST",
+                            body: formData
+                        }
+                    );
+
+                const data =
+                    await response.json();
+
+                // DISPLAY AI TEXT
+                document.getElementById("response").innerText =
+                    data.ai_reply;
+
+                // PLAY AI VOICE
+                const player =
+                    document.getElementById("player");
+
+                player.src =
+                    "http://127.0.0.1:5000/audio/" +
+                    data.voice_file;
+
+                player.play();
+
+                document.getElementById("status").innerText =
+                    "Done";
+
+            };
+
+            // START RECORDING
+            mediaRecorder.start();
+
+            document.getElementById("status").innerText =
+                "Recording... Speak now";
+
+            // STOP AFTER 5 SECONDS
+            setTimeout(() => {
+
+                mediaRecorder.stop();
+
+            }, 5000);
+
+        } catch (error) {
+
+            console.error(error);
+
+            document.getElementById("status").innerText =
+                "Error occurred";
+
+        }
+    }
+
+</script>
+```
+
+</body>
+
+</html>
